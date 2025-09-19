@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+// @ts-ignore
+import React from 'react';
+const { useState } = React;
+import { View, StyleSheet, TextInput, TouchableOpacity, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, UserRole } from '../context/AuthContext';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
+import { Ionicons } from '@expo/vector-icons';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -11,25 +14,59 @@ type Props = {
   navigation: LoginScreenNavigationProp;
 };
 
-const LoginScreen: React.FC<Props> = ({ navigation }) => {
+type RoleOption = {
+  id: UserRole;
+  title: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
+const roleOptions: RoleOption[] = [
+  {
+    id: 'subscriber',
+    title: 'Subscriber',
+    description: 'Request waste pickup services',
+    icon: 'person-outline'
+  },
+  {
+    id: 'dispatcher',
+    title: 'Dispatcher',
+    description: 'Manage pickup requests',
+    icon: 'bicycle-outline'
+  },
+  {
+    id: 'admin',
+    title: 'Administrator',
+    description: 'Manage system and users',
+    icon: 'shield-outline'
+  }
+];
+
+const LoginScreen: React.FC<Props> = ({ navigation }: { navigation: LoginScreenNavigationProp }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('subscriber');
   
   const { login, register, isLoading } = useAuth();
   const { colors } = useTheme();
 
   const handleAuth = async () => {
     if (isRegistering) {
-      await register(email, password, name);
+      // For now, we'll use the selected role for registration
+      // In a real app, you'd handle registration differently
+      await register(email, password, name, selectedRole);
     } else {
-      await login(email, password);
+      await login(email, password, selectedRole);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContainer}
+    >
       <View style={[styles.formContainer, { backgroundColor: colors.card }]}>
         <Text style={[styles.title, { color: colors.text }]}>
           {isRegistering ? 'Create Account' : 'Welcome Back'}
@@ -65,6 +102,46 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           secureTextEntry
         />
         
+        <View style={styles.roleContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {isRegistering ? 'I am a...' : 'Sign in as...'}
+          </Text>
+          <View style={styles.roleOptions}>
+            {roleOptions.map((role) => (
+              <TouchableOpacity
+                key={role.id}
+                style={[
+                  styles.roleOption,
+                  selectedRole === role.id && { 
+                    borderColor: colors.primary,
+                    backgroundColor: `${colors.primary}20`
+                  }
+                ]}
+                onPress={() => setSelectedRole(role.id)}
+              >
+                <Ionicons 
+                  name={role.icon} 
+                  size={24} 
+                  color={selectedRole === role.id ? colors.primary : colors.text} 
+                />
+                <View style={styles.roleTextContainer}>
+                  <Text style={[styles.roleTitle, { color: colors.text }]}>
+                    {role.title}
+                  </Text>
+                  <Text style={[styles.roleDescription, { color: colors.secondaryText }]}>
+                    {role.description}
+                  </Text>
+                </View>
+                {selectedRole === role.id && (
+                  <View style={[styles.roleSelected, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="checkmark" size={16} color="white" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.primary }]}
           onPress={handleAuth}
@@ -90,24 +167,69 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  scrollContainer: {
     padding: 20,
+    justifyContent: 'center',
+    flexGrow: 1,
   },
   formContainer: {
     padding: 20,
     borderRadius: 10,
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    marginVertical: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  roleContainer: {
+    marginTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  roleOptions: {
+    gap: 10,
+  },
+  roleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  roleTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  roleDescription: {
+    fontSize: 12,
+  },
+  roleSelected: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,

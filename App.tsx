@@ -1,16 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import 'react-native-gesture-handler';
+import React from 'react';
+
+// Expo and React Native imports
 import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, View, StyleSheet, LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { enableScreens } from 'react-native-screens';
+
+// Context providers
 import { ThemeProvider } from './src/context/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { RootStackParamList } from './src/types/navigation';
-import LoginScreen from './src/screens/LoginScreen';
-import AppNavigator from './src/navigation/AppNavigator';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { LogBox } from 'react-native';
+
+// Navigation
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import type { Theme } from '@react-navigation/native';
+import RoleBasedNavigator from './src/navigation/AppNavigator';
+
+// Type for NavigationContainer props
+type NavigationContainerProps = React.ComponentProps<typeof NavigationContainer>;
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -18,14 +26,15 @@ LogBox.ignoreLogs([
   'AsyncStorage has been extracted from react-native core',
 ]);
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+// Enable screens for better performance
+enableScreens();
 
 // Initialize any required services
 // import { initializeApp } from './src/services/firebase';
 // initializeApp();
 
-const AppContent = () => {
-  const { user, isLoading } = useAuth();
+const AppContent: React.FC = () => {
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -35,35 +44,45 @@ const AppContent = () => {
     );
   }
 
+  const navTheme: Theme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: 'transparent',
+    },
+  };
+
+  const navigationContainerProps: NavigationContainerProps = {
+    theme: navTheme,
+    children: <RoleBasedNavigator />
+  };
+
+  return <NavigationContainer {...navigationContainerProps} />;
+};
+
+// Extend ViewProps to include children
+interface AppContainerProps {
+  children: React.ReactNode;
+}
+
+const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <Stack.Screen name="MainTabs" component={AppNavigator} />
-        ) : (
-          <Stack.Screen 
-            name="Login" 
-            component={LoginScreen} 
-            options={{ animationTypeForReplace: 'pop' }}
-          />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider children={
+          <AuthProvider children={children} />
+        } />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 };
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <StatusBar style="dark" />
-            <AppContent />
-          </AuthProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <AppContainer>
+      <AppContent />
+      <StatusBar style="auto" />
+    </AppContainer>
   );
 }
 
